@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Apps Store</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/image/logo.png"/>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            500: '#8B5CF6',
+                            600: '#7C3AED',
+                            700: '#6D28D9',
+                        },
+                        secondary: {
+                            500: '#6366F1',
+                            600: '#4F46E5',
+                            700: '#4338CA',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: radial-gradient(ellipse at top, #1e1b4b, #0f172a);
+}
+
+.card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: center;
+    backface-visibility: hidden;
+    will-change: transform, box-shadow;
+}
+
+.card:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 20px 25px -5px rgba(139, 92, 246, 0.3),
+                0 10px 10px -5px rgba(139, 92, 246, 0.1);
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #4c1d95;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #5b21b6;
+}
+</style>
+</head>
+
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <header class="py-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i data-feather="grid" class="text-primary-500"></i>
+                    <h1 class="text-2xl font-bold bg-gradient-to-r from-primary-500 to-secondary-500 bg-clip-text text-transparent">
+                        App Store
+                    </h1>
+                </div>
+
+                <div class="relative w-full max-w-md ml-8">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i data-feather="search" class="text-gray-400"></i>
+                    </div>
+                    <input
+                        id="search"
+                        type="text"
+                        class="block w-full pl-10 pr-3 py-3 rounded-xl bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder-gray-400 text-white transition-all duration-200"
+                        placeholder="Search apps..."
+                    >
+                </div>
+            </div>
+        </header>
+
+        <main class="pb-12">
+            <div id="store"></div>
+        </main>
+    </div>
+
+<script>
+function favicon(url) {
+    try {
+        return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=128`
+    } catch {
+        return "https://via.placeholder.com/42/1e1b4b/ffffff?text=App"
+    }
+}
+
+function safeHostname(url) {
+    try {
+        return new URL(url).hostname.replace('www.', '')
+    } catch {
+        return ""
+    }
+}
+
+function installApp(app) {
+    parent.postMessage({ type: "install-app", name: app.name, url: app.url }, "*")
+}
+
+function renderStore(data, containerId, filter = "") {
+    const store = document.getElementById(containerId)
+    store.innerHTML = ""
+
+    data.categories.forEach(cat => {
+        const apps = cat.apps.filter(a =>
+            (a.name + cat.name).toLowerCase().includes(filter.toLowerCase())
+        )
+        if (!apps.length) return
+
+        const section = document.createElement("section")
+        section.className = "mb-10"
+
+        const title = document.createElement("h2")
+        title.className = "text-sm font-semibold tracking-wider text-primary-400 mb-4 px-2 uppercase"
+        title.textContent = cat.name
+
+        const grid = document.createElement("div")
+        grid.className = "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+
+        apps.forEach(app => {
+            const card = document.createElement("div")
+            card.className = "card bg-gray-800 rounded-xl p-4 flex flex-col items-center cursor-pointer border border-gray-700 hover:border-primary-500"
+            card.innerHTML = `
+                <img src="${favicon(app.url)}" class="w-12 h-12 rounded-lg mb-3 object-cover">
+                <div class="text-sm font-medium text-center text-gray-200 truncate w-full">${app.name}</div>
+                <div class="text-xs text-gray-400 mt-1">${safeHostname(app.url)}</div>
+            `
+            card.onclick = () => installApp(app)
+            grid.appendChild(card)
+        })
+
+        section.appendChild(title)
+        section.appendChild(grid)
+        store.appendChild(section)
+    })
+}
+
+fetch("apps.json")
+    .then(r => r.json())
+    .then(data => {
+        renderStore(data, "store")
+        document.getElementById("search").addEventListener("input", e => {
+            renderStore(data, "store", e.target.value)
+        })
+    })
+    .catch(() => {
+        document.getElementById("store").innerHTML = `
+            <div class="flex flex-col items-center justify-center py-20 text-center">
+                <i data-feather="alert-circle" class="w-12 h-12 text-red-400 mb-4"></i>
+                <h3 class="text-xl font-medium text-gray-200 mb-2">Failed to load apps</h3>
+                <p class="text-gray-400 max-w-md">We couldn't load the app store.</p>
+            </div>
+        `
+        feather.replace()
+    })
+
+feather.replace()
+</script>
+</body>
+</html>
